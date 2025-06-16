@@ -22,7 +22,7 @@ numero_documento = st.text_input("🔍 Ingrese el número de documento del clien
 if numero_documento:
     query = text("""
         SELECT * FROM ZEUS_MOVIMIENTOS
-        WHERE NUMERO_DOCUMENTO = :numero_documento
+        WHERE NUMERO_DOCUMENTO = '1057593731'
         ORDER BY FECHA DESC
     """)
 
