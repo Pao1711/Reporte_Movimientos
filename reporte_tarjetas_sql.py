@@ -37,7 +37,7 @@ if not st.session_state.autenticado:
 
 # ----------------------------
 # Si está autenticado, continúa con la app
-st.title("📊 Reporte de Movimientos de Tarjetas")
+st.title("📊 Reporte: Movimientos de Tarjetas")
 
 # Leer variables de entorno
 user = os.getenv("MYSQL_USER")
