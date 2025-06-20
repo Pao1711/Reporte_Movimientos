@@ -14,7 +14,7 @@ USUARIOS_AUTORIZADOS = {
 # ----------------------------
 
 # Configura la página
-st.set_page_config(page_title="Reporte de Movimientos de Tarjetas", layout="wide")
+st.set_page_config(page_title="Reporte: Movimientos de Tarjetas", layout="wide")
 
 # ----------------------------
 # Control de login
