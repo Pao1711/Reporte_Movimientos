@@ -9,7 +9,7 @@ from datetime import date
 # Diccionario de usuarios
 USUARIOS_AUTORIZADOS = {
     "admin": "admin123",
-    "paola": "Anthony29$"
+    "paola": "Anthony29$.."
 }
 # ----------------------------
 
@@ -34,8 +34,8 @@ if not st.session_state.autenticado:
         else:
             st.error("❌ Usuario o contraseña incorrectos.")
     st.stop()
-# ----------------------------
 
+# ----------------------------
 # Si está autenticado, continúa con la app
 st.title("📊 Reporte de Movimientos de Tarjetas")
 
@@ -85,11 +85,10 @@ if st.button("🔎 Buscar movimientos"):
         st.error("❌ Debe ingresar un número de documento o un rango de fechas.")
         st.stop()
 
-    # Validación: si hay fechas, deben ser coherentes
-    if fecha_inicio and fecha_fin:
-        if fecha_inicio > fecha_fin:
-            st.error("❌ La fecha de inicio no puede ser posterior a la fecha de fin.")
-            st.stop()
+    # Validación de fechas
+    if fecha_inicio and fecha_fin and fecha_inicio > fecha_fin:
+        st.error("❌ La fecha de inicio no puede ser posterior a la fecha de fin.")
+        st.stop()
 
     try:
         with engine.connect() as connection:
@@ -120,25 +119,29 @@ if st.button("🔎 Buscar movimientos"):
             st.warning("⚠️ No se encontraron movimientos con los filtros aplicados.")
         else:
             st.success(f"✅ Se encontraron {len(df)} movimientos.")
-            st.dataframe(df, use_container_width=True)
 
-            # Exportar a Excel
-            output = BytesIO()
-            df.to_excel(output, index=False, engine="openpyxl")
-            output.seek(0)
+            # Mostrar tabla si se filtró por número de documento
+            if numero_documento:
+                st.dataframe(df, use_container_width=True)
 
-            file_suffix = (
-                f"{numero_documento}_{fecha_inicio}_{fecha_fin}"
-                if numero_documento and fecha_inicio and fecha_fin
-                else numero_documento or f"{fecha_inicio}_{fecha_fin}" if fecha_inicio and fecha_fin else "todos"
-            )
+            # Permitir descarga si se filtró por fecha
+            if fecha_inicio and fecha_fin:
+                output = BytesIO()
+                df.to_excel(output, index=False, engine="openpyxl")
+                output.seek(0)
 
-            st.download_button(
-                label="📥 Descargar como Excel",
-                data=output,
-                file_name=f"movimientos_{file_suffix}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+                file_suffix = (
+                    f"{numero_documento}_{fecha_inicio}_{fecha_fin}"
+                    if numero_documento and fecha_inicio and fecha_fin
+                    else numero_documento or f"{fecha_inicio}_{fecha_fin}"
+                )
+
+                st.download_button(
+                    label="📥 Descargar como Excel",
+                    data=output,
+                    file_name=f"movimientos_{file_suffix}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
 
     except Exception as e:
         st.error(f"❌ Error al consultar: {e}")
