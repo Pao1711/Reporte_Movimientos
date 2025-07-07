@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte de Movimientos</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    label { display: block; margin-top: 10px; }
+    input, button, select { margin-top: 5px; }
+    table { margin-top: 20px; width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background-color: #eee; }
+    #login-box { max-width: 300px; margin: auto; padding: 20px; border: 1px solid #ccc; border-radius: 5px; }
+  </style>
+</head>
+<body>
+
+  <div id="login-box">
+    <h2>🔐 Iniciar sesión</h2>
+    <label>Usuario:
+      <input type="text" id="usuario">
+    </label>
+    <label>Contraseña:
+      <input type="password" id="clave">
+    </label>
+    <button onclick="login()">Ingresar</button>
+    <p id="login-error" style="color: red;"></p>
+  </div>
+
+  <div id="app" style="display:none;">
+    <h1>📊 Reporte de Movimientos / Cierre Diario</h1>
+
+    <label>Número de Documento:
+      <input type="text" id="documento">
+    </label>
+
+    <label>Fecha Inicio:
+      <input type="date" id="fecha_inicio">
+    </label>
+
+    <label>Fecha Fin:
+      <input type="date" id="fecha_fin">
+    </label>
+
+    <label>Selecciona reporte:
+      <select id="tipo_reporte">
+        <option value="movimientos">Movimientos</option>
+        <option value="cierrediario">Cierre Diario</option>
+      </select>
+    </label>
+
+    <button onclick="buscar(true)">🔍 Ver reporte</button>
+    <button onclick="buscar(false)">📥 Descargar Excel</button>
+
+    <div id="resultado"></div>
+  </div>
+
+  <script>
+    const usuariosAutorizados = {
+      "admin": "admin123",
+      "paola": "1234"
+    };
+
+    function login() {
+      const usuario = document.getElementById("usuario").value;
+      const clave = document.getElementById("clave").value;
+      const error = document.getElementById("login-error");
+
+      if (usuariosAutorizados[usuario] === clave) {
+        document.getElementById("login-box").style.display = "none";
+        document.getElementById("app").style.display = "block";
+      } else {
+        error.textContent = "❌ Usuario o contraseña incorrectos.";
+      }
+    }
+
+    async function buscar(verPantalla = true) {
+      const documento = document.getElementById("documento").value;
+      const fechaInicio = document.getElementById("fecha_inicio").value;
+      const fechaFin = document.getElementById("fecha_fin").value;
+      const tipoReporte = document.getElementById("tipo_reporte").value;
+
+      const body = {
+        numero_documento: documento || null,
+        fecha_inicio: fechaInicio || null,
+        fecha_fin: fechaFin || null,
+        como_excel: !verPantalla
+      };
+
+      const endpoint = tipoReporte === "cierrediario" ? "/cierrediario" : "/movimientos";
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
+      const contenedor = document.getElementById("resultado");
+      contenedor.innerHTML = "";
+
+      if (verPantalla) {
+        if (res.ok) {
+          const data = await res.json();
+          if (data.length === 0) {
+            contenedor.innerHTML = "<p>No se encontraron resultados.</p>";
+            return;
+          }
+
+          let tabla = "<table><thead><tr>";
+          Object.keys(data[0]).forEach(col => { tabla += `<th>${col}</th>`; });
+          tabla += "</tr></thead><tbody>";
+
+          data.forEach(row => {
+            tabla += "<tr>";
+            Object.values(row).forEach(val => { tabla += `<td>${val}</td>`; });
+            tabla += "</tr>";
+          });
+
+          tabla += "</tbody></table>";
+          contenedor.innerHTML = tabla;
+
+        } else {
+          const error = await res.json();
+          contenedor.innerHTML = `<p style="color:red;">Error: ${error.detail}</p>`;
+        }
+
+      } else {
+        if (!res.ok) {
+  const error = await res.json();
+  alert("❌ Error al descargar: " + (error.detail || "desconocido"));
+  return;
+}
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = tipoReporte + ".xlsx";
+        a.click();
+        window.URL.revokeObjectURL(url);
+      }
+    }
+  </script>
+
+</body>
+</html>
