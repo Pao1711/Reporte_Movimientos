@@ -80,8 +80,13 @@ def ejecutar_consulta(nombre_tabla: str, filtros: FiltroGeneral):
     with engine.connect() as conn:
         df = pd.read_sql(query, conn, params=parametros)
 
+    # ✅ Retornar mensaje si no hay datos
     if df.empty:
-        return JSONResponse(status_code=404, content={"detalle": "No se encontraron registros"})
+        return JSONResponse(status_code=200, content={"mensaje": "No hay datos disponibles"})
+
+    # ✅ Forzar descarga si es corte diario
+    if nombre_tabla == "ZEUS_CORTE_DIARIO":
+        filtros.como_excel = True
 
     if filtros.como_excel:
         output = BytesIO()
