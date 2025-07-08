@@ -11,6 +11,7 @@
     th, td { border: 1px solid #ccc; padding: 8px; }
     th { background-color: #eee; }
     #login-box { max-width: 300px; margin: auto; padding: 20px; border: 1px solid #ccc; border-radius: 5px; }
+    #estado { font-weight: bold; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -43,15 +44,16 @@
     </label>
 
     <label>Selecciona reporte:
-      <select id="tipo_reporte">
+      <select id="tipo_reporte" onchange="actualizarBotonVer()">
         <option value="movimientos">Movimientos</option>
         <option value="cierrediario">Cierre Diario</option>
       </select>
     </label>
 
-    <button onclick="buscar(true)">🔍 Ver reporte</button>
+    <button id="btn-ver" onclick="buscar(true)">🔍 Ver reporte</button>
     <button onclick="buscar(false)">📥 Descargar Excel</button>
 
+    <div id="estado"></div>
     <div id="resultado"></div>
   </div>
 
@@ -74,11 +76,23 @@
       }
     }
 
+    function actualizarBotonVer() {
+      const tipoReporte = document.getElementById("tipo_reporte").value;
+      const botonVer = document.getElementById("btn-ver");
+      botonVer.disabled = (tipoReporte === "cierrediario");
+    }
+
     async function buscar(verPantalla = true) {
       const documento = document.getElementById("documento").value;
       const fechaInicio = document.getElementById("fecha_inicio").value;
       const fechaFin = document.getElementById("fecha_fin").value;
       const tipoReporte = document.getElementById("tipo_reporte").value;
+
+      const estado = document.getElementById("estado");
+      const contenedor = document.getElementById("resultado");
+
+      estado.textContent = "⏳ Cargando...";
+      contenedor.innerHTML = "";
 
       const body = {
         numero_documento: documento || null,
@@ -89,57 +103,60 @@
 
       const endpoint = tipoReporte === "cierrediario" ? "/cierrediario" : "/movimientos";
 
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      });
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
 
-      const contenedor = document.getElementById("resultado");
-      contenedor.innerHTML = "";
-
-      if (verPantalla) {
-        if (res.ok) {
-          const data = await res.json();
-          if (data.length === 0) {
-            contenedor.innerHTML = "<p>No se encontraron resultados.</p>";
+        if (verPantalla) {
+          if (res.ok) {
+            const data = await res.json();
+            if (data.mensaje) {
+              contenedor.innerHTML = `<p>${data.mensaje}</p>`;
+            } else if (Array.isArray(data) && data.length > 0) {
+              let tabla = "<table><thead><tr>";
+              Object.keys(data[0]).forEach(col => { tabla += `<th>${col}</th>`; });
+              tabla += "</tr></thead><tbody>";
+              data.forEach(row => {
+                tabla += "<tr>";
+                Object.values(row).forEach(val => { tabla += `<td>${val}</td>`; });
+                tabla += "</tr>";
+              });
+              tabla += "</tbody></table>";
+              contenedor.innerHTML = tabla;
+            } else {
+              contenedor.innerHTML = "<p>No se encontraron resultados.</p>";
+            }
+          } else {
+            const error = await res.json();
+            contenedor.innerHTML = `<p style="color:red;">Error: ${error.detail}</p>`;
+          }
+        } else {
+          if (!res.ok) {
+            const error = await res.json();
+            alert("❌ Error al descargar: " + (error.detail || "desconocido"));
             return;
           }
-
-          let tabla = "<table><thead><tr>";
-          Object.keys(data[0]).forEach(col => { tabla += `<th>${col}</th>`; });
-          tabla += "</tr></thead><tbody>";
-
-          data.forEach(row => {
-            tabla += "<tr>";
-            Object.values(row).forEach(val => { tabla += `<td>${val}</td>`; });
-            tabla += "</tr>";
-          });
-
-          tabla += "</tbody></table>";
-          contenedor.innerHTML = tabla;
-
-        } else {
-          const error = await res.json();
-          contenedor.innerHTML = `<p style="color:red;">Error: ${error.detail}</p>`;
+          const blob = await res.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = tipoReporte + ".xlsx";
+          a.click();
+          window.URL.revokeObjectURL(url);
         }
 
-      } else {
-        if (!res.ok) {
-  const error = await res.json();
-  alert("❌ Error al descargar: " + (error.detail || "desconocido"));
-  return;
-}
-
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = tipoReporte + ".xlsx";
-        a.click();
-        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        alert("❌ Error en la consulta.");
+      } finally {
+        estado.textContent = "";
       }
     }
+
+    // Ejecutar esto al cargar por primera vez
+    actualizarBotonVer();
   </script>
 
 </body>
